@@ -1,0 +1,67 @@
+name: Lint
+on:
+  push:
+    branches:
+      - develop
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install poetry
+          poetry install --no-root
+
+      - name: Run pre-commit
+        run: |
+          pip install pre-commit
+          pre-commit run --all-files
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Decrypt .env.gpg file
+        env:
+          ENV_PASSPHRASE: ${{ secrets.ENV_PASSPHRASE }}
+          ENCRYPTED_ENV_FILE: ${{ secrets.ENCRYPTED_ENV_FILE }}
+        run: |
+          echo "$ENCRYPTED_ENV_FILE" | base64 -d > .env.gpg
+          gpg --quiet --batch --yes --decrypt --passphrase="$ENV_PASSPHRASE" --output .env .env.gpg
+
+      - name: Set up Docker Compose
+        uses: docker/setup-compose-action@v1
+
+      - name: Create shared network
+        run: docker network create core_shared_network
+
+      - name: Build and run containers
+        run: docker compose --env-file .env up -d --build
+
+      - name: Run Tests
+        run: |
+          docker compose exec api poetry run coverage run -m pytest -v 
+          docker compose exec api poetry run coverage report --fail-under=90
+
+      - name: Tear down Docker Compose
+        run: docker compose down
+      - name: Clean up sensitive files
+        if: always()
+        run: rm -f .env .env.gpg
