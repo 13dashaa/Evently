@@ -1,0 +1,10 @@
+.env
+localstack/
+.pyc
+__pycache__/
+
+*.log
+tmp/
+
+.vscode/
+.idea/
