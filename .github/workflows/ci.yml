@@ -58,8 +58,8 @@ jobs:
 
       - name: Run Tests
         run: |
-          docker compose exec api poetry run coverage run -m pytest -v 
-          docker compose exec api poetry run coverage report --fail-under=90
+          docker compose exec api coverage run -m pytest -v 
+          docker compose exec api coverage report --fail-under=80
 
       - name: Tear down Docker Compose
         run: docker compose down

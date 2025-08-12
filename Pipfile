@@ -11,6 +11,7 @@ environs = "*"
 psycopg2-binary = "*"
 pytest = "*"
 pytest-django = "*"
+coverage = "*"
 
 [dev-packages]
 mypy = "*"
