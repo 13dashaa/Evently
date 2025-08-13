@@ -1,7 +1,7 @@
 import pytest
 from rest_framework.test import APIClient
 
-from events.models import Venue
+from events.models import Event, Venue
 
 
 @pytest.fixture
@@ -19,8 +19,19 @@ def venue_data() -> dict:
 
 
 @pytest.fixture
+def event_data(create_venue) -> dict:
+    venue = create_venue()
+    return {
+        "name": "Test event",
+        "description": "Test description",
+        "date": "2025-01-01",
+        "venue": venue.id,
+    }
+
+
+@pytest.fixture
 def create_venue():
-    def _create_venue(**kwargs):
+    def _create_venue(**kwargs) -> Venue:
         return Venue.objects.create(
             name=kwargs.get("name", "Test Venue"),
             address=kwargs.get("address", "Test Address"),
@@ -28,3 +39,20 @@ def create_venue():
         )
 
     return _create_venue
+
+
+@pytest.fixture
+def create_event(create_user, create_venue):
+    def _create_event(organizer=None, **kwargs) -> Event:
+        if organizer is None:
+            organizer = create_user("default_organizer")
+        venue = create_venue()
+        return Event.objects.create(
+            name=kwargs.get("name", "Test event"),
+            description=kwargs.get("description", "Test description"),
+            date=kwargs.get("date", "2025-01-01"),
+            venue=venue,
+            organizer=organizer,
+        )
+
+    return _create_event
