@@ -1,7 +1,16 @@
 import pytest
+from django.contrib.auth.models import User
 from rest_framework.test import APIClient
 
 from events.models import Event, Venue
+
+
+@pytest.fixture
+def create_user():
+    def _create_user(username: str, password: str = "password123") -> User:
+        return User.objects.create_user(username=username, password=password)
+
+    return _create_user
 
 
 @pytest.fixture
