@@ -1,3 +1,5 @@
+import uuid
+
 import pytest
 from django.contrib.auth.models import User
 from rest_framework.test import APIClient
@@ -8,7 +10,8 @@ from events.models import Event, Venue
 @pytest.fixture
 def create_user():
     def _create_user(username: str, password: str = "password123") -> User:
-        return User.objects.create_user(username=username, password=password)
+        unique_username = f"{username}_{uuid.uuid4().hex[:8]}"
+        return User.objects.create_user(username=unique_username, password=password)
 
     return _create_user
 

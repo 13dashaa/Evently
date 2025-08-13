@@ -55,8 +55,8 @@ def test_list_event_success(api_client, create_event) -> None:
 @pytest.mark.django_db
 def test_retrieve_event_success(api_client, create_event) -> None:
     test_event = create_event(name="Test event")
-    url = reverse("event-detail")
-    response = api_client.get(url, args=[test_event.id])
+    url = reverse("event-detail", args=[test_event.id])
+    response = api_client.get(url)
 
     assert response.status_code == status.HTTP_200_OK
     assert response.data["name"] == test_event.name
@@ -65,8 +65,8 @@ def test_retrieve_event_success(api_client, create_event) -> None:
 @pytest.mark.django_db
 def test_retrieve_failure_not_found(api_client, create_event) -> None:
     create_event(name="Test event")
-    url = reverse("event-detail")
-    response = api_client.get(url, args=[9999])
+    url = reverse("event-detail", args=[9999])
+    response = api_client.get(url)
 
     assert response.status_code == status.HTTP_404_NOT_FOUND
 
