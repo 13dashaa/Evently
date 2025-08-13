@@ -6,7 +6,9 @@ from events.models import Event
 
 
 @pytest.mark.django_db
-def test_create_event_success_authenticated(api_client, create_user, event_data: dict):
+def test_create_event_success_authenticated(
+    api_client, create_user, create_venue, event_data: dict
+):
     user = create_user("organizer")
     api_client.force_authenticate(user=user)
     url = reverse("event-list")
@@ -19,12 +21,14 @@ def test_create_event_success_authenticated(api_client, create_user, event_data:
 
 
 @pytest.mark.django_db
-def test_create_event_failure_unauthenticated(api_client, event_data: dict):
+def test_create_event_failure_unauthenticated(
+    api_client, create_venue, event_data: dict
+):
 
     url = reverse("event-list")
     response = api_client.post(url, data=event_data, format="json")
 
-    assert response.status_code == status.HTTP_401_UNAUTHORIZED
+    assert response.status_code == status.HTTP_403_FORBIDDEN
     assert Event.objects.count() == 0
 
 

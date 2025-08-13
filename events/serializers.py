@@ -1,4 +1,6 @@
+from django.contrib.auth.models import User
 from rest_framework import serializers
+from rest_framework.relations import PrimaryKeyRelatedField
 
 from events.models import Event, Venue
 
@@ -15,6 +17,9 @@ class VenueSerializer(serializers.ModelSerializer):
 
 
 class EventSerializer(serializers.ModelSerializer):
+    organizer = serializers.HiddenField(default=serializers.CurrentUserDefault())
+
     class Meta:
+
         model = Event
         fields = "__all__"
