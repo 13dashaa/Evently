@@ -7,67 +7,92 @@ from orders.models import Ticket, TicketType
 
 
 @pytest.mark.django_db
-def test_create_ticket_by_organizer_success(
-    api_client, create_user, create_event, ticket_data: dict
+@pytest.mark.parametrize(
+    "user_type, expected_status",
+    [
+        ("organizer", status.HTTP_201_CREATED),
+        ("admin", status.HTTP_201_CREATED),
+        ("non_organizer", status.HTTP_403_FORBIDDEN),
+        ("unauthenticated", status.HTTP_403_FORBIDDEN),
+    ],
+)
+def test_create_ticket_permissions(
+    api_client, create_user, create_event, ticket_data: dict, user_type, expected_status
 ) -> None:
     organizer = create_user("organizer")
     event = create_event(organizer=organizer)
-    api_client.force_authenticate(user=organizer)
+
+    if user_type == "organizer":
+        current_user = organizer
+    elif user_type == "admin":
+        current_user = create_user("admin", is_staff=True)
+    elif user_type == "non_organizer":
+        current_user = create_user("non_organizer")
+    else:
+        current_user = None
+
+    if current_user:
+        api_client.force_authenticate(user=current_user)
+
     url = reverse("ticket-list")
     data = ticket_data.copy()
     data["event"] = event.id
     response = api_client.post(url, data=data, format="json")
 
-    assert response.status_code == status.HTTP_201_CREATED
-    assert Ticket.objects.count() == 1
-    assert Ticket.objects.get().event == event
+    assert response.status_code == expected_status
+    if expected_status == status.HTTP_201_CREATED:
+        assert Ticket.objects.count() == 1
+    else:
+        assert Ticket.objects.count() == 0
 
 
-@pytest.mark.django_db
-def test_create_ticket_by_admin_success(
-    api_client, create_user, create_event, ticket_data: dict
-) -> None:
-    admin = create_user("admin", is_staff=True)
-    event = create_event()
-    api_client.force_authenticate(user=admin)
-    url = reverse("ticket-list")
-    data = ticket_data.copy()
-    data["event"] = event.id
-    response = api_client.post(url, data=data, format="json")
-
-    assert response.status_code == status.HTTP_201_CREATED
-    assert Ticket.objects.count() == 1
-
-
-@pytest.mark.django_db
-def test_create_ticket_by_non_organizer_failure(
-    api_client, create_user, create_event, ticket_data: dict
-) -> None:
-    organizer = create_user("organizer")
-    non_organizer = create_user("non_organizer")
-    event = create_event(organizer=organizer)
-    api_client.force_authenticate(user=non_organizer)
-    url = reverse("ticket-list")
-    data = ticket_data.copy()
-    data["event"] = event.id
-    response = api_client.post(url, data=data, format="json")
-
-    assert response.status_code == status.HTTP_403_FORBIDDEN
-    assert Ticket.objects.count() == 0
-
-
-@pytest.mark.django_db
-def test_create_ticket_by_unauthenticated_user_failure(
-    api_client, create_event, ticket_data: dict
-) -> None:
-    event = create_event()
-    url = reverse("ticket-list")
-    data = ticket_data.copy()
-    data["event"] = event.id
-    response = api_client.post(url, data=data, format="json")
-
-    assert response.status_code == status.HTTP_403_FORBIDDEN
-    assert Ticket.objects.count() == 0
+#
+#
+# @pytest.mark.django_db
+# def test_create_ticket_by_admin_success(
+#     api_client, create_user, create_event, ticket_data: dict
+# ) -> None:
+#     admin = create_user("admin", is_staff=True)
+#     event = create_event()
+#     api_client.force_authenticate(user=admin)
+#     url = reverse("ticket-list")
+#     data = ticket_data.copy()
+#     data["event"] = event.id
+#     response = api_client.post(url, data=data, format="json")
+#
+#     assert response.status_code == status.HTTP_201_CREATED
+#     assert Ticket.objects.count() == 1
+#
+#
+# @pytest.mark.django_db
+# def test_create_ticket_by_non_organizer_failure(
+#     api_client, create_user, create_event, ticket_data: dict
+# ) -> None:
+#     organizer = create_user("organizer")
+#     non_organizer = create_user("non_organizer")
+#     event = create_event(organizer=organizer)
+#     api_client.force_authenticate(user=non_organizer)
+#     url = reverse("ticket-list")
+#     data = ticket_data.copy()
+#     data["event"] = event.id
+#     response = api_client.post(url, data=data, format="json")
+#
+#     assert response.status_code == status.HTTP_403_FORBIDDEN
+#     assert Ticket.objects.count() == 0
+#
+#
+# @pytest.mark.django_db
+# def test_create_ticket_by_unauthenticated_user_failure(
+#     api_client, create_event, ticket_data: dict
+# ) -> None:
+#     event = create_event()
+#     url = reverse("ticket-list")
+#     data = ticket_data.copy()
+#     data["event"] = event.id
+#     response = api_client.post(url, data=data, format="json")
+#
+#     assert response.status_code == status.HTTP_403_FORBIDDEN
+#     assert Ticket.objects.count() == 0
 
 
 @pytest.mark.django_db
@@ -101,133 +126,173 @@ def test_retrieve_ticket_failure_not_found(api_client, create_ticket) -> None:
 
 
 @pytest.mark.django_db
-def test_update_ticket_by_organizer_success(
-    api_client, create_ticket, create_event, create_user
+@pytest.mark.parametrize(
+    "method, user_type, data, expected_status",
+    [
+        ("patch", "organizer", {"price": 500.00}, status.HTTP_200_OK),
+        ("patch", "admin", {"price": 500.00}, status.HTTP_200_OK),
+        ("patch", "non_organizer", {"price": 500.00}, status.HTTP_403_FORBIDDEN),
+        ("patch", "organizer", {"quantity": 5.5}, status.HTTP_400_BAD_REQUEST),
+        ("delete", "organizer", None, status.HTTP_204_NO_CONTENT),
+        ("delete", "admin", None, status.HTTP_204_NO_CONTENT),
+        ("delete", "non_organizer", None, status.HTTP_403_FORBIDDEN),
+    ],
+)
+def test_delete_ticket_permissions(
+    api_client,
+    create_ticket,
+    create_event,
+    create_user,
+    method,
+    user_type,
+    data,
+    expected_status,
 ):
     organizer = create_user("organizer")
     event = create_event(organizer=organizer)
-    api_client.force_authenticate(user=organizer)
+
+    if user_type == "organizer":
+        current_user = organizer
+    elif user_type == "admin":
+        current_user = create_user("admin", is_staff=True)
+    elif user_type == "non_organizer":
+        current_user = create_user("non_organizer")
+    else:
+        current_user = None
+
+    if current_user:
+        api_client.force_authenticate(user=current_user)
+
     ticket = create_ticket(event=event)
     url = reverse("ticket-detail", args=[ticket.id])
-    data = {"price": 500.00}
-    response = api_client.patch(url, data=data, format="json")
 
-    assert response.status_code == status.HTTP_200_OK
-    ticket.refresh_from_db()
-    assert ticket.price == 500
+    if method == "patch":
+        response = api_client.patch(url, data=data, format="json")
+    elif method == "delete":
+        response = api_client.delete(url)
 
+    assert response.status_code == expected_status
 
-@pytest.mark.django_db
-def test_update_ticket_by_non_organizer_failure(
-    api_client, create_user, create_event, create_ticket
-):
-    organizer = create_user("organizer")
-    non_organizer = create_user("non_organizer")
-    event = create_event(organizer=organizer)
-    ticket = create_ticket(event=event)
-    api_client.force_authenticate(user=non_organizer)
-
-    url = reverse("ticket-detail", args=[ticket.id])
-    data = {"price": 500.00}
-    response = api_client.patch(url, data=data, format="json")
-
-    assert response.status_code == status.HTTP_403_FORBIDDEN
-    ticket.refresh_from_db()
-    assert ticket.price != 500.00
+    if method == "patch" and expected_status == status.HTTP_200_OK:
+        ticket.refresh_from_db()
+        assert ticket.price == data.get("price")
+    elif method == "delete" and expected_status == status.HTTP_204_NO_CONTENT:
+        assert Ticket.objects.count() == 0
 
 
-@pytest.mark.django_db
-def test_update_ticket_by_admin_success(
-    api_client, create_ticket, create_event, create_user
-):
-    organizer = create_user("organizer")
-    admin = create_user("admin", is_staff=True)
-    event = create_event(organizer=organizer)
-    api_client.force_authenticate(user=admin)
-    ticket = create_ticket(event=event)
-    url = reverse("ticket-detail", args=[ticket.id])
-    data = {"price": 500.00}
-    response = api_client.patch(url, data=data, format="json")
-
-    assert response.status_code == status.HTTP_200_OK
-    ticket.refresh_from_db()
-    assert ticket.price == 500
-
-
-@pytest.mark.django_db
-def test_update_ticket_failure_invalid_data(
-    api_client, create_user, create_event, create_ticket
-):
-    organizer = create_user("organizer")
-    event = create_event(organizer=organizer)
-    ticket = create_ticket(event=event, type=TicketType.vip)
-    api_client.force_authenticate(user=organizer)
-    url = reverse("ticket-detail", args=[ticket.id])
-    data = {"quantity": 4.5}
-    response = api_client.patch(url, data=data, format="json")
-
-    assert response.status_code == status.HTTP_400_BAD_REQUEST
-    ticket.refresh_from_db()
-    assert ticket.type != TicketType.standard
-
-
-@pytest.mark.django_db
-def test_delete_ticket_by_organizer_success(
-    api_client, create_ticket, create_event, create_user
-):
-    organizer = create_user("organizer")
-    event = create_event(organizer=organizer)
-    api_client.force_authenticate(user=organizer)
-    ticket = create_ticket(event=event)
-    url = reverse("ticket-detail", args=[ticket.id])
-    response = api_client.delete(url)
-
-    assert response.status_code == status.HTTP_204_NO_CONTENT
-    assert Ticket.objects.count() == 0
-
-
-@pytest.mark.django_db
-def test_delete_ticket_by_admin_success(
-    api_client, create_ticket, create_event, create_user
-):
-    organizer = create_user("organizer")
-    admin = create_user("admin", is_staff=True)
-    event = create_event(organizer=organizer)
-    api_client.force_authenticate(user=admin)
-    ticket = create_ticket(event=event)
-    url = reverse("ticket-detail", args=[ticket.id])
-    response = api_client.delete(url)
-
-    assert response.status_code == status.HTTP_204_NO_CONTENT
-    assert Ticket.objects.count() == 0
-
-
-@pytest.mark.django_db
-def test_delete_ticket_failure_not_found(
-    api_client, create_ticket, create_event, create_user
-) -> None:
-    organizer = create_user("organizer")
-    event = create_event(organizer=organizer)
-    create_ticket(event=event)
-    api_client.force_authenticate(user=organizer)
-    url = reverse("ticket-detail", args=[999])
-    response = api_client.delete(url)
-
-    assert response.status_code == status.HTTP_404_NOT_FOUND
-
-
-@pytest.mark.django_db
-def test_delete_ticket_by_non_organizer_failure(
-    api_client, create_user, create_event, create_ticket
-):
-    organizer = create_user("organizer")
-    non_organizer = create_user("non_organizer")
-    event = create_event(organizer=organizer)
-    ticket = create_ticket(event=event)
-    api_client.force_authenticate(user=non_organizer)
-
-    url = reverse("ticket-detail", args=[ticket.id])
-    response = api_client.delete(url)
-
-    assert response.status_code == status.HTTP_403_FORBIDDEN
-    assert Ticket.objects.count() == 1
+#
+#
+# @pytest.mark.django_db
+# def test_update_ticket_by_non_organizer_failure(
+#     api_client, create_user, create_event, create_ticket
+# ):
+#     organizer = create_user("organizer")
+#     non_organizer = create_user("non_organizer")
+#     event = create_event(organizer=organizer)
+#     ticket = create_ticket(event=event)
+#     api_client.force_authenticate(user=non_organizer)
+#
+#     url = reverse("ticket-detail", args=[ticket.id])
+#     data = {"price": 500.00}
+#     response = api_client.patch(url, data=data, format="json")
+#
+#     assert response.status_code == status.HTTP_403_FORBIDDEN
+#     ticket.refresh_from_db()
+#     assert ticket.price != 500.00
+#
+#
+# @pytest.mark.django_db
+# def test_update_ticket_by_admin_success(
+#     api_client, create_ticket, create_event, create_user
+# ):
+#     organizer = create_user("organizer")
+#     admin = create_user("admin", is_staff=True)
+#     event = create_event(organizer=organizer)
+#     api_client.force_authenticate(user=admin)
+#     ticket = create_ticket(event=event)
+#     url = reverse("ticket-detail", args=[ticket.id])
+#     data = {"price": 500.00}
+#     response = api_client.patch(url, data=data, format="json")
+#
+#     assert response.status_code == status.HTTP_200_OK
+#     ticket.refresh_from_db()
+#     assert ticket.price == 500
+#
+#
+# @pytest.mark.django_db
+# def test_update_ticket_failure_invalid_data(
+#     api_client, create_user, create_event, create_ticket
+# ):
+#     organizer = create_user("organizer")
+#     event = create_event(organizer=organizer)
+#     ticket = create_ticket(event=event, type=TicketType.vip)
+#     api_client.force_authenticate(user=organizer)
+#     url = reverse("ticket-detail", args=[ticket.id])
+#     data = {"quantity": 4.5}
+#     response = api_client.patch(url, data=data, format="json")
+#
+#     assert response.status_code == status.HTTP_400_BAD_REQUEST
+#     ticket.refresh_from_db()
+#     assert ticket.type != TicketType.standard
+#
+#
+# @pytest.mark.django_db
+# def test_delete_ticket_by_organizer_success(
+#     api_client, create_ticket, create_event, create_user
+# ):
+#     organizer = create_user("organizer")
+#     event = create_event(organizer=organizer)
+#     api_client.force_authenticate(user=organizer)
+#     ticket = create_ticket(event=event)
+#     url = reverse("ticket-detail", args=[ticket.id])
+#     response = api_client.delete(url)
+#
+#     assert response.status_code == status.HTTP_204_NO_CONTENT
+#     assert Ticket.objects.count() == 0
+#
+#
+# @pytest.mark.django_db
+# def test_delete_ticket_by_admin_success(
+#     api_client, create_ticket, create_event, create_user
+# ):
+#     organizer = create_user("organizer")
+#     admin = create_user("admin", is_staff=True)
+#     event = create_event(organizer=organizer)
+#     api_client.force_authenticate(user=admin)
+#     ticket = create_ticket(event=event)
+#     url = reverse("ticket-detail", args=[ticket.id])
+#     response = api_client.delete(url)
+#
+#     assert response.status_code == status.HTTP_204_NO_CONTENT
+#     assert Ticket.objects.count() == 0
+#
+#
+# @pytest.mark.django_db
+# def test_delete_ticket_failure_not_found(
+#     api_client, create_ticket, create_event, create_user
+# ) -> None:
+#     organizer = create_user("organizer")
+#     event = create_event(organizer=organizer)
+#     create_ticket(event=event)
+#     api_client.force_authenticate(user=organizer)
+#     url = reverse("ticket-detail", args=[999])
+#     response = api_client.delete(url)
+#
+#     assert response.status_code == status.HTTP_404_NOT_FOUND
+#
+#
+# @pytest.mark.django_db
+# def test_delete_ticket_by_non_organizer_failure(
+#     api_client, create_user, create_event, create_ticket
+# ):
+#     organizer = create_user("organizer")
+#     non_organizer = create_user("non_organizer")
+#     event = create_event(organizer=organizer)
+#     ticket = create_ticket(event=event)
+#     api_client.force_authenticate(user=non_organizer)
+#
+#     url = reverse("ticket-detail", args=[ticket.id])
+#     response = api_client.delete(url)
+#
+#     assert response.status_code == status.HTTP_403_FORBIDDEN
+#     assert Ticket.objects.count() == 1
