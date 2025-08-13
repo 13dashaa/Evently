@@ -19,10 +19,11 @@ from django.contrib import admin
 from django.urls import include, path
 from rest_framework.routers import DefaultRouter
 
-from events.views import VenueViewSet
+from events.views import EventViewSet, VenueViewSet
 
 router = DefaultRouter()
 router.register(r"venues", VenueViewSet, basename="venue")
+router.register(r"events", EventViewSet, basename="event")
 
 urlpatterns = [
     path("admin/", admin.site.urls),

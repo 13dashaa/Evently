@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from events.models import Venue
+from events.models import Event, Venue
 
 
 class VenueSerializer(serializers.ModelSerializer):
@@ -12,3 +12,9 @@ class VenueSerializer(serializers.ModelSerializer):
         if value <= 0:
             raise serializers.ValidationError("Capacity must be greater than 0.")
         return value
+
+
+class EventSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Event
+        fields = "__all__"
