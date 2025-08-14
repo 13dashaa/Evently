@@ -5,7 +5,7 @@ from django.contrib.auth.models import User
 from rest_framework.test import APIClient
 
 from events.models import Event, Venue
-from orders.models import Ticket, TicketType
+from orders.models import Order, Ticket, TicketType
 
 
 @pytest.fixture
@@ -92,10 +92,35 @@ def create_ticket(create_event):
             event = create_event()
         return Ticket.objects.create(
             event=event,
-            price=kwargs.get("price", 1000),
+            price=kwargs.get("price", 100.0),
             quantity=kwargs.get("quantity", 10000),
             type=kwargs.get("type", TicketType.standard),
             available_quantity=kwargs.get("available_quantity", 10000),
         )
 
     return _create_ticket
+
+
+@pytest.fixture
+def order_data(create_ticket) -> dict:
+    ticket = create_ticket()
+    return {"ticket": ticket.id, "quantity": 2}
+
+
+@pytest.fixture
+def create_order(create_ticket, create_user):
+    def _create_order(ticket=None, user=None, **kwargs) -> Order:
+        if ticket is None:
+            ticket = create_ticket()
+        if user is None:
+            user = create_user("default_user")
+
+        total_price = ticket.price * kwargs.get("quantity", 2)
+        return Order.objects.create(
+            ticket=ticket,
+            user=user,
+            quantity=kwargs.get("quantity", 2),
+            total_price=total_price,
+        )
+
+    return _create_order

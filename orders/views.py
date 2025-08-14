@@ -2,9 +2,9 @@ from django.shortcuts import render
 from rest_framework import permissions, viewsets
 from rest_framework.exceptions import PermissionDenied
 
-from orders.models import Ticket
+from orders.models import Order, Ticket
 from orders.permissions import IsTicketOrganizerOrAdminOrReadOnly
-from orders.serializers import TicketSerializer
+from orders.serializers import OrderSerializer, TicketSerializer
 
 
 class TicketViewSet(viewsets.ModelViewSet):
@@ -17,3 +17,21 @@ class TicketViewSet(viewsets.ModelViewSet):
         if event.organizer != self.request.user and not self.request.user.is_staff:
             raise PermissionDenied("Ticket can only be made by an organizer or admin.")
         serializer.save(available_quantity=serializer.validated_data.get("quantity"))
+
+
+class OrderViewSet(viewsets.ModelViewSet):
+    queryset = Order.objects.all()
+    serializer_class = OrderSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    http_method_names = ["get", "post", "head", "options"]
+
+    def get_queryset(self):
+        user = self.request.user
+        return Order.objects.filter(user=user)
+
+    #
+    # def perform_create(self, serializer):
+    #     # event = serializer.validated_data.get("event")
+    #     # if event.organizer != self.request.user and not self.request.user.is_staff:
+    #     #     raise PermissionDenied("Ticket can only be made by an organizer or admin.")
+    #     serializer.save(total_price=serializer.validated_data.get("quantity")*serializer.validated_data.get("ticket").price)
