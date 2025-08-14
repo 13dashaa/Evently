@@ -1,34 +1,41 @@
 import pytest
 from django.urls import reverse
-from rest_framework import serializers, status
+from rest_framework import status
 
-from orders.models import Order, PaidStatus
-from orders.serializers import OrderSerializer
+from orders.models import Order
 
 
 @pytest.mark.django_db
-def test_create_order_by_authenticated_user_success(
-    api_client, create_ticket, create_user, order_data
+@pytest.mark.parametrize(
+    "is_authenticated, expected_result, expected_order_count",
+    [
+        (True, status.HTTP_201_CREATED, 1),
+        (False, status.HTTP_403_FORBIDDEN, 0),
+    ],
+)
+def test_create_order_with_different_auth_states(
+    api_client,
+    create_ticket,
+    create_user,
+    order_data,
+    is_authenticated,
+    expected_result,
+    expected_order_count,
 ):
-    customer = create_user("customer")
-    api_client.force_authenticate(user=customer)
-    # ticket = create_ticket(available_quantity=100, quantity=100)
+    user = create_user("customer")
+
+    if is_authenticated:
+        api_client.force_authenticate(user=user)
 
     url = reverse("order-list")
     response = api_client.post(url, data=order_data, format="json")
 
-    assert response.status_code == status.HTTP_201_CREATED
-    assert Order.objects.count() == 1
-    assert Order.objects.get().quantity == order_data.get("quantity")
+    assert response.status_code == expected_result
+    assert Order.objects.count() == expected_order_count
 
-
-@pytest.mark.django_db
-def test_create_order_by_unauthenticated_user_failure(api_client, order_data):
-    url = reverse("order-list")
-    response = api_client.post(url, data=order_data, format="json")
-
-    assert response.status_code == status.HTTP_403_FORBIDDEN
-    assert Order.objects.count() == 0
+    if is_authenticated:
+        order = Order.objects.get()
+        assert order.user == user
 
 
 @pytest.mark.django_db
@@ -86,25 +93,25 @@ def test_retrieve_order_by_non_owner_failure(
 
 
 @pytest.mark.django_db
-def test_update_order_failure(api_client, create_user, create_order):
+@pytest.mark.parametrize(
+    "http_methods",
+    [
+        "patch",
+        "delete",
+    ],
+)
+def test_forbidden_order_methods_failure(
+    api_client, create_user, create_order, http_methods
+):
     user = create_user("customer1")
     order = create_order(user=user, quantity=1)
 
     api_client.force_authenticate(user=user)
     url = reverse("order-detail", args=[order.id])
-    data = {"quantity": 2}
-    response = api_client.patch(url, data=data, format="json")
 
-    assert response.status_code == status.HTTP_405_METHOD_NOT_ALLOWED
-
-
-@pytest.mark.django_db
-def test_delete_order_failure(api_client, create_user, create_order):
-    user = create_user("customer1")
-    order = create_order(user=user, quantity=1)
-
-    api_client.force_authenticate(user=user)
-    url = reverse("order-detail", args=[order.id])
-    response = api_client.delete(url)
+    if http_methods == "patch":
+        response = api_client.patch(url, data={"quantity": 2}, format="json")
+    elif http_methods == "delete":
+        response = api_client.delete(url)
 
     assert response.status_code == status.HTTP_405_METHOD_NOT_ALLOWED
