@@ -27,6 +27,9 @@ class Ticket(models.Model):
     quantity = models.IntegerField(validators=[MinValueValidator(1)])
     available_quantity = models.IntegerField()
 
+    def __str__(self):
+        return self.event.name
+
 
 class Order(models.Model):
     user = models.ForeignKey("auth.User", on_delete=models.CASCADE)
