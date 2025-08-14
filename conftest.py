@@ -12,9 +12,7 @@ from orders.models import Order, Ticket, TicketType
 def create_user():
     def _create_user(username: str, password: str = "password123", **kwargs) -> User:
         unique_username = f"{username}_{uuid.uuid4().hex[:8]}"
-        return User.objects.create_user(
-            username=unique_username, password=password, **kwargs
-        )
+        return User.objects.create_user(username=unique_username, password=password, **kwargs)
 
     return _create_user
 

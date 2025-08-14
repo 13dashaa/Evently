@@ -28,7 +28,7 @@ class Ticket(models.Model):
     available_quantity = models.IntegerField()
 
     def __str__(self):
-        return self.event.name
+        return f"{self.event} ({self.type})"
 
 
 class Order(models.Model):

@@ -39,9 +39,7 @@ def test_create_order_with_different_auth_states(
 
 
 @pytest.mark.django_db
-def test_list_orders_by_owner_success(
-    api_client, create_ticket, create_user, create_order
-):
+def test_list_orders_by_owner_success(api_client, create_ticket, create_user, create_order):
     user1 = create_user("customer1")
     user2 = create_user("customer2")
     ticket = create_ticket()
@@ -59,9 +57,7 @@ def test_list_orders_by_owner_success(
 
 
 @pytest.mark.django_db
-def test_retrieve_order_by_owner_success(
-    api_client, create_ticket, create_user, create_order
-):
+def test_retrieve_order_by_owner_success(api_client, create_ticket, create_user, create_order):
     owner = create_user("customer1")
     ticket = create_ticket()
     order = create_order(ticket=ticket, user=owner, quantity=1)
@@ -76,9 +72,7 @@ def test_retrieve_order_by_owner_success(
 
 
 @pytest.mark.django_db
-def test_retrieve_order_by_non_owner_failure(
-    api_client, create_ticket, create_user, create_order
-):
+def test_retrieve_order_by_non_owner_failure(api_client, create_ticket, create_user, create_order):
     owner = create_user("customer1")
     non_owner = create_user("customer2")
     ticket = create_ticket()
@@ -100,9 +94,7 @@ def test_retrieve_order_by_non_owner_failure(
         "delete",
     ],
 )
-def test_forbidden_order_methods_failure(
-    api_client, create_user, create_order, http_methods
-):
+def test_forbidden_order_methods_failure(api_client, create_user, create_order, http_methods):
     user = create_user("customer1")
     order = create_order(user=user, quantity=1)
 

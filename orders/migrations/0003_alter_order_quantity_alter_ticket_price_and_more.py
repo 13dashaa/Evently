@@ -16,9 +16,7 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name="order",
             name="quantity",
-            field=models.IntegerField(
-                validators=[django.core.validators.MinValueValidator(1)]
-            ),
+            field=models.IntegerField(validators=[django.core.validators.MinValueValidator(1)]),
         ),
         migrations.AlterField(
             model_name="ticket",
@@ -32,8 +30,6 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name="ticket",
             name="quantity",
-            field=models.IntegerField(
-                validators=[django.core.validators.MinValueValidator(1)]
-            ),
+            field=models.IntegerField(validators=[django.core.validators.MinValueValidator(1)]),
         ),
     ]

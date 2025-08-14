@@ -21,9 +21,7 @@ def test_create_event_success_authenticated(
 
 
 @pytest.mark.django_db
-def test_create_event_failure_unauthenticated(
-    api_client, create_venue, event_data: dict
-):
+def test_create_event_failure_unauthenticated(api_client, create_venue, event_data: dict):
 
     url = reverse("event-list")
     response = api_client.post(url, data=event_data, format="json")

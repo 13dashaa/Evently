@@ -3,6 +3,7 @@ from rest_framework import serializers
 
 from orders.exeptions import CreateOrderException, NotAuthenticatedException
 from orders.models import Order, Ticket
+from orders.tasks import send_order_confirmation_notification
 
 
 class TicketSerializer(serializers.ModelSerializer):
@@ -23,11 +24,6 @@ class OrderSerializer(serializers.ModelSerializer):
 
         if not user.is_authenticated:
             raise NotAuthenticatedException("You are not authenticated.")
-        # quantity = data["quantity"]
-        # ticket = data["ticket"]
-        #
-        # if quantity > ticket.available_quantity:
-        #     raise CreateOrderException("Not enough available ticket.")
 
         data["user"] = user
 
@@ -56,5 +52,7 @@ class OrderSerializer(serializers.ModelSerializer):
                 quantity=quantity,
                 ticket=ticket,
             )
+
+            send_order_confirmation_notification.delay(order.id)
 
         return order

@@ -12,6 +12,9 @@ pytest = "*"
 pytest-django = "*"
 coverage = "*"
 django = "<5.2"
+celery = "*"
+redis = "*"
+aioboto3 = "*"
 
 [dev-packages]
 mypy = "*"
