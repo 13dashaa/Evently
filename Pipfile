@@ -4,8 +4,24 @@ verify_ssl = true
 name = "pypi"
 
 [packages]
+djangorestframework = "*"
+djangorestframework-simplejwt = "*"
+environs = "*"
+psycopg2-binary = "*"
+pytest = "*"
+pytest-django = "*"
+coverage = "*"
+django = "<5.2"
+celery = "*"
+redis = "*"
+aioboto3 = "*"
 
 [dev-packages]
+mypy = "*"
+flake8 = "*"
+black = "*"
+isort = "*"
+pre-commit = "*"
 
 [requires]
 python_version = "3.12"
